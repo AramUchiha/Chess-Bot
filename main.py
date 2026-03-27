@@ -1,20 +1,23 @@
 from chess import Move
 
-
 import chess
 import random
 turn_count = 0
 board = chess.Board()
+piece_values = {
+    chess.PAWN: 1,
+    chess.KNIGHT: 3,
+    chess.BISHOP: 3,
+    chess.ROOK: 5,
+    chess.QUEEN: 9,
+    chess.KING: 0
+}
 def evaluate(board):
     score = 0
-
     for every square in chess.SQUARES:
         piece = board.piece_at(square)
         if there is a piece:
-            get value
-            if white: add
-            if black: subtract
-
+            
     return score
 def print_board_with_coords(board: chess.Board) -> None:
         files = "a b c d e f g h"
