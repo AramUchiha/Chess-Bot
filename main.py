@@ -12,13 +12,10 @@ piece_values = {
     chess.QUEEN: 9,
     chess.KING: 0
 }
-def evaluate(board):
-    score = 0
-    for every square in chess.SQUARES:
-        piece = board.piece_at(square)
-        if there is a piece:
-            
-    return score
+def is_capture(self, move: Move) -> bool:
+        """Checks if the given pseudo-legal move is a capture."""
+        touched = BB_SQUARES[move.from_square] ^ BB_SQUARES[move.to_square]
+        return bool(touched & self.occupied_co[not self.turn]) or self.is_en_passant(move)
 def print_board_with_coords(board: chess.Board) -> None:
         files = "a b c d e f g h"
         print("  " + files)
@@ -38,6 +35,12 @@ while True:
         print("---------Black's Turn---------")
         legal_moves = list(board.legal_moves)
         AI_move = random.choice(legal_moves)
+        for i in range(legal_moves):
+            if i == is_capture(True):
+                x = is_capture
+                AI_move == x
+            
+                AI_move = largest(piece_values)
         board.push(AI_move)
         turn_count += 1
         print("AI played:", AI_move.uci())
