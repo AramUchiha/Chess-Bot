@@ -23,8 +23,6 @@ def evaluate() -> int:  # Returns the material score of the current board
                 score += 0.5
             else:
                 score -= 0.5
-    if board.turn == chess.BLACK:
-        score += len(list(board.legal_moves)) * 0.1
 
     if board.is_check():
         if board.turn == chess.WHITE:
@@ -54,11 +52,25 @@ def print_board_with_coords(
 def ai_move() -> chess.Move:
     print("---------Black's Turn---------")
     legal_moves = list(board.legal_moves)
-    move = random.choice(legal_moves)
-    board.push(move)
-    print("AI played:", move.uci())
+
+    best_move = None
+    best_score = float("inf")
+
+    for move in legal_moves:
+        board.push(move)
+        score = evaluate()
+        board.pop()
+
+        print(f"Testing {move.uci()} -> score {score}")
+
+        if score < best_score:
+            best_score = score
+            best_move = move
+
+    board.push(best_move)
+    print("AI played:", best_move.uci())
     print("Score:", evaluate())
-    return move
+    return best_move
 
 
 def human_move() -> chess.Move:
