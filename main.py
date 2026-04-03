@@ -1,88 +1,52 @@
-import chess
 import random
+import chess
+from display import print_board_with_coords
+from evaluation import evaluate
+from search import minimax, transposition_table
 
 board = chess.Board()
-piece_values = {
-    chess.PAWN: 1,
-    chess.KNIGHT: 3,
-    chess.BISHOP: 3,
-    chess.ROOK: 5,
-    chess.QUEEN: 9,
-    chess.KING: 0,
-}
 
 
-def evaluate() -> int:  # Returns the material score of the current board
-    score = 0
-    # reward center control
-    center_squares = [chess.D4, chess.E4, chess.D5, chess.E5]
-    for square in center_squares:
-        piece = board.piece_at(square)
-        if piece:
-            if piece.color == chess.WHITE:
-                score += 0.5
-            else:
-                score -= 0.5
-
-    if board.is_check():
-        if board.turn == chess.WHITE:
-            score -= 0.5
-        else:
-            score += 0.5
-    for piece_type, value in piece_values.items():
-        score += len(board.pieces(piece_type, chess.WHITE)) * value
-        score -= len(board.pieces(piece_type, chess.BLACK)) * value
-    return score
-
-
-def print_board_with_coords(
-    board: chess.Board,
-) -> None:  # Prints the board with coordinates
-    files = "a b c d e f g h"
-    print("  " + files)
-    for rank in range(7, -1, -1):  # 8 down to 1
-        row = []
-        for file in range(8):  # a to h
-            piece = board.piece_at(chess.square(file, rank))
-            row.append(piece.symbol() if piece else ".")
-        print(f"{rank + 1} " + " ".join(row))
-    print("  " + files)
-
-
-def ai_move() -> chess.Move:
+def ai_move(board: chess.Board) -> chess.Move:
     print("---------Black's Turn---------")
+    transposition_table.clear()
     legal_moves = list(board.legal_moves)
 
-    best_move = None
+    best_moves = []
     best_score = float("inf")
+    search_depth = 3
 
     for move in legal_moves:
         board.push(move)
-        score = evaluate()
+        score = minimax(board, search_depth - 1, True, float("-inf"), float("inf"))
         board.pop()
 
         print(f"Testing {move.uci()} -> score {score}")
 
         if score < best_score:
             best_score = score
-            best_move = move
+            best_moves = [move]
+        elif score == best_score:
+            best_moves.append(move)
 
+    best_move = random.choice(best_moves)
     board.push(best_move)
     print("AI played:", best_move.uci())
-    print("Score:", evaluate())
+    print("Score:", evaluate(board))
     return best_move
 
 
-def human_move() -> chess.Move:
+def human_move(board: chess.Board) -> chess.Move:
     print("---------White's Turn---------")
 
     while True:
         print_board_with_coords(board)
-        legal_moves = list(board.legal_moves)
 
-        # Legal move checking
+        legal_moves = list(board.legal_moves)
         print("Legal moves:", legal_moves)
+
         move_text = input("Select your move: ")
+
         try:
             move = chess.Move.from_uci(move_text)
         except ValueError:
@@ -90,18 +54,19 @@ def human_move() -> chess.Move:
             continue
 
         if move not in board.legal_moves:
-            print("That move doesn't work try again: ")
+            print("That move doesn't work. Try again.")
             continue
 
         board.push(move)
         return move
 
 
-def check_game_over() -> bool:
+def check_game_over(board: chess.Board) -> bool:
     if board.is_checkmate():
         print(board)
         print("Checkmate!")
         return True
+
     if (
         board.is_stalemate()
         or board.is_insufficient_material()
@@ -110,19 +75,20 @@ def check_game_over() -> bool:
         print(board)
         print("Game over (draw).")
         return True
+
     return False
 
 
 def main():
-    while True:  # Game loop
+    while True:
         if board.turn == chess.BLACK:
-            ai_move()
-            if check_game_over():
+            ai_move(board)
+            if check_game_over(board):
                 break
 
-        move = human_move()
+        move = human_move(board)
         print("Played:", move.uci())
-        if check_game_over():
+        if check_game_over(board):
             break
 
 
