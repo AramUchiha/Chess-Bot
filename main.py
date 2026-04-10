@@ -21,7 +21,7 @@ def ai_move(board: chess.Board) -> chess.Move:
         score = minimax(board, search_depth - 1, True, float("-inf"), float("inf"))
         board.pop()
 
-        print(f"Testing {move.uci()} -> score {score}")
+        # print(f"Testing {move.uci()} -> score {score}")
 
         if score < best_score:
             best_score = score

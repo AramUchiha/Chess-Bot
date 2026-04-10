@@ -7,17 +7,19 @@ transposition_table = {}
 def move_ordering_score(board: chess.Board, move: chess.Move) -> int:
     score = 0
 
+    # Captures (use MVV-LVA idea)
     if board.is_capture(move):
-        score += 10
+        victim = board.piece_at(move.to_square)
+        attacker = board.piece_at(move.from_square)
 
+        if victim and attacker:
+            score += 10 * victim.piece_type - attacker.piece_type
+        else:
+            score += 10
+
+    # Promotions
     if move.promotion:
         score += 20
-
-    board.push(move)
-    if board.is_check():
-        score += 15
-    board.pop()
-
     return score
 
 
