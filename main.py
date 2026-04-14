@@ -31,7 +31,6 @@ def ai_move(board: chess.Board) -> chess.Move:
 
     best_move = random.choice(best_moves)
     board.push(best_move)
-    print("AI played:", best_move.uci())
     print("Score:", evaluate(board))
     return best_move
 
@@ -82,7 +81,9 @@ def check_game_over(board: chess.Board) -> bool:
 def main():
     while True:
         if board.turn == chess.BLACK:
-            ai_move(board)
+            move = ai_move(board)
+            print("AI played:", move.uci())
+
             if check_game_over(board):
                 break
 
