@@ -18,7 +18,7 @@ def ai_move(board: chess.Board) -> chess.Move:
 
     for move in legal_moves:
         board.push(move)
-        score = minimax(board, search_depth - 1, True, float("-inf"), float("inf"))
+        score = minimax(board, search_depth - 1, float("-inf"), float("inf"))
         board.pop()
 
         # print(f"Testing {move.uci()} -> score {score}")
@@ -86,11 +86,11 @@ def main():
 
             if check_game_over(board):
                 break
-
-        move = human_move(board)
-        print("Played:", move.uci())
-        if check_game_over(board):
-            break
+        else:
+            move = human_move(board)
+            print("Played:", move.uci())
+            if check_game_over(board):
+                break
 
 
 main()

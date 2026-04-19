@@ -52,20 +52,14 @@ def quiescence_search(board: chess.Board, alpha: float, beta: float) -> float:
     return alpha
 
 
-def minimax(
-    board: chess.Board,
-    depth: int,
-    maximizing_player: bool,
-    alpha: float,
-    beta: float,
-) -> float:
+def minimax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
     if board.is_game_over():
         return evaluate(board)
 
     if depth == 0:
         return quiescence_search(board, alpha, beta)
 
-    position_key = (board.fen(), depth, maximizing_player)
+    position_key = (board.fen(), depth)
     if position_key in transposition_table:
         return transposition_table[position_key]
 
@@ -74,30 +68,13 @@ def minimax(
         key=lambda move: move_ordering_score(board, move),
         reverse=True,
     )
-
-    if maximizing_player:
-        best_score = float("-inf")
-        for move in legal_moves:
-            board.push(move)
-            score = minimax(board, depth - 1, False, alpha, beta)
-            board.pop()
-
-            best_score = max(best_score, score)
-            alpha = max(alpha, best_score)
-            if beta <= alpha:
-                break
-
-        transposition_table[position_key] = best_score
-        return best_score
-
-    best_score = float("inf")
+    best_score = float("-inf")
     for move in legal_moves:
         board.push(move)
-        score = minimax(board, depth - 1, True, alpha, beta)
+        score = minimax(board, depth - 1, -beta, -alpha)
         board.pop()
-
-        best_score = min(best_score, score)
-        beta = min(beta, best_score)
+        best_score = max(best_score, score)
+        alpha = max(alpha, best_score)
         if beta <= alpha:
             break
 
