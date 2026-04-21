@@ -1,42 +1,11 @@
-import random
 import chess
 from display import print_board_with_coords
-from evaluation import evaluate
-from search import minimax, transposition_table
-
-board = chess.Board()
-
-
-def ai_move(board: chess.Board) -> chess.Move:
-    print("---------Black's Turn---------")
-    transposition_table.clear()
-    legal_moves = list(board.legal_moves)
-
-    best_moves = []
-    best_score = float("inf")
-    search_depth = 3
-
-    for move in legal_moves:
-        board.push(move)
-        score = minimax(board, search_depth - 1, float("-inf"), float("inf"))
-        board.pop()
-
-        # print(f"Testing {move.uci()} -> score {score}")
-
-        if score < best_score:
-            best_score = score
-            best_moves = [move]
-        elif score == best_score:
-            best_moves.append(move)
-
-    best_move = random.choice(best_moves)
-    board.push(best_move)
-    print("Score:", evaluate(board))
-    return best_move
+from engine import SearchLimits, choose_move
+from evaluation import evaluate_white
 
 
 def human_move(board: chess.Board) -> chess.Move:
-    print("---------White's Turn---------")
+    print("---------Your turn---------")
 
     while True:
         print_board_with_coords(board)
@@ -78,11 +47,17 @@ def check_game_over(board: chess.Board) -> bool:
     return False
 
 
-def main():
+def main() -> None:
+    board = chess.Board()
+    limits = SearchLimits(depth=4)
+
     while True:
         if board.turn == chess.BLACK:
-            move = ai_move(board)
-            print("AI played:", move.uci())
+            print("---------Engine (Black)---------")
+            move = choose_move(board, limits)
+            board.push(move)
+            print("Engine played:", move.uci())
+            print("Eval (White-centric):", evaluate_white(board))
 
             if check_game_over(board):
                 break
@@ -93,4 +68,5 @@ def main():
                 break
 
 
-main()
+if __name__ == "__main__":
+    main()
