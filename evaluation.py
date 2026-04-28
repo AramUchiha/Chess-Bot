@@ -148,8 +148,17 @@ def _pawn_structure_score(board: chess.Board, color: chess.Color) -> int:
     enemy_pawns = board.pieces(chess.PAWN, not color)
     score = 0
     file_counts = [0] * 8
+    enemy_max_rank = [-1] * 8
+    enemy_min_rank = [8] * 8
     for sq in pawns:
         file_counts[chess.square_file(sq)] += 1
+    for sq in enemy_pawns:
+        ef = chess.square_file(sq)
+        er = chess.square_rank(sq)
+        if er > enemy_max_rank[ef]:
+            enemy_max_rank[ef] = er
+        if er < enemy_min_rank[ef]:
+            enemy_min_rank[ef] = er
 
     for sq in pawns:
         file_idx = chess.square_file(sq)
@@ -167,17 +176,17 @@ def _pawn_structure_score(board: chess.Board, color: chess.Color) -> int:
         # Passed pawns.
         rank = chess.square_rank(sq)
         passed = True
-        for ep in enemy_pawns:
-            e_file = chess.square_file(ep)
-            if abs(e_file - file_idx) > 1:
+        for f in (file_idx - 1, file_idx, file_idx + 1):
+            if f < 0 or f > 7:
                 continue
-            e_rank = chess.square_rank(ep)
-            if color == chess.WHITE and e_rank > rank:
-                passed = False
-                break
-            if color == chess.BLACK and e_rank < rank:
-                passed = False
-                break
+            if color == chess.WHITE:
+                if enemy_max_rank[f] > rank:
+                    passed = False
+                    break
+            else:
+                if enemy_min_rank[f] < rank:
+                    passed = False
+                    break
         if passed:
             advance = rank if color == chess.WHITE else 7 - rank
             score += 12 + 6 * advance
@@ -216,25 +225,32 @@ def evaluate_white(board: chess.Board) -> float:
     mg_score = 0
     eg_score = 0
     phase = 0
+    white_bishops = len(board.pieces(chess.BISHOP, chess.WHITE))
+    black_bishops = len(board.pieces(chess.BISHOP, chess.BLACK))
 
-    white_bishops = 0
-    black_bishops = 0
+    for piece_type in (
+        chess.PAWN,
+        chess.KNIGHT,
+        chess.BISHOP,
+        chess.ROOK,
+        chess.QUEEN,
+        chess.KING,
+    ):
+        mg_base = MG_VALUE[piece_type]
+        eg_base = EG_VALUE[piece_type]
+        mg_pst = PST_MG[piece_type]
+        eg_pst = PST_EG[piece_type]
+        w_squares = board.pieces(piece_type, chess.WHITE)
+        b_squares = board.pieces(piece_type, chess.BLACK)
+        phase += PHASE_WEIGHT[piece_type] * (len(w_squares) + len(b_squares))
 
-    for sq, piece in board.piece_map().items():
-        piece_type = piece.piece_type
-        color = piece.color
-        psq = _mirror_if_black(sq, color)
-        sign = 1 if color == chess.WHITE else -1
-
-        mg_score += sign * (MG_VALUE[piece_type] + PST_MG[piece_type][psq])
-        eg_score += sign * (EG_VALUE[piece_type] + PST_EG[piece_type][psq])
-        phase += PHASE_WEIGHT[piece_type]
-
-        if piece_type == chess.BISHOP:
-            if color == chess.WHITE:
-                white_bishops += 1
-            else:
-                black_bishops += 1
+        for sq in w_squares:
+            mg_score += mg_base + mg_pst[sq]
+            eg_score += eg_base + eg_pst[sq]
+        for sq in b_squares:
+            msq = chess.square_mirror(sq)
+            mg_score -= mg_base + mg_pst[msq]
+            eg_score -= eg_base + eg_pst[msq]
 
     # Cheap structural terms.
     mg_score += _pawn_structure_score(board, chess.WHITE)

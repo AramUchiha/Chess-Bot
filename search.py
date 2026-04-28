@@ -13,13 +13,17 @@ class TTEntry:
     depth: int
     score: float
     flag: int
+    best_move: chess.Move | None
 
 
-transposition_table: dict[str, TTEntry] = {}
+transposition_table: dict[object, TTEntry] = {}
 
 
-def tt_board_key(board: chess.Board) -> str:
-    """Position identity for TT (board + side + castling + EP); omits clocks."""
+def tt_board_key(board: chess.Board) -> object:
+    """Fast position identity for TT; fallback to FEN fields if unavailable."""
+    key_fn = getattr(board, "_transposition_key", None)
+    if key_fn is not None:
+        return key_fn()
     parts = board.fen().split()
     return " ".join(parts[:4])
 
@@ -28,7 +32,7 @@ def _is_mate_band(score: float) -> bool:
     return abs(score) > MATE_SCORE / 2
 
 
-def tt_probe(key: str, depth: int, alpha: float, beta: float) -> float | None:
+def tt_probe(key: object, depth: int, alpha: float, beta: float) -> float | None:
     entry = transposition_table.get(key)
     if entry is None or entry.depth < depth:
         return None
@@ -43,10 +47,21 @@ def tt_probe(key: str, depth: int, alpha: float, beta: float) -> float | None:
     return None
 
 
-def tt_store(key: str, depth: int, score: float, flag: int) -> None:
+def tt_store(
+    key: object,
+    depth: int,
+    score: float,
+    flag: int,
+    best_move: chess.Move | None,
+) -> None:
     old = transposition_table.get(key)
     if old is None or depth >= old.depth:
-        transposition_table[key] = TTEntry(depth=depth, score=score, flag=flag)
+        transposition_table[key] = TTEntry(
+            depth=depth,
+            score=score,
+            flag=flag,
+            best_move=best_move,
+        )
 
 
 def move_ordering_score(board: chess.Board, move: chess.Move) -> int:
@@ -66,12 +81,19 @@ def move_ordering_score(board: chess.Board, move: chess.Move) -> int:
     return score
 
 
-def ordered_legal_moves(board: chess.Board) -> list[chess.Move]:
-    return sorted(
-        board.legal_moves,
-        key=lambda m: move_ordering_score(board, m),
-        reverse=True,
-    )
+def ordered_legal_moves(
+    board: chess.Board,
+    hash_move: chess.Move | None = None,
+) -> list[chess.Move]:
+    moves = list(board.legal_moves)
+    if len(moves) <= 1:
+        return moves
+    if hash_move is not None and hash_move in moves:
+        moves.remove(hash_move)
+        moves.sort(key=lambda m: move_ordering_score(board, m), reverse=True)
+        return [hash_move] + moves
+    moves.sort(key=lambda m: move_ordering_score(board, m), reverse=True)
+    return moves
 
 
 def quiescence_search(board: chess.Board, alpha: float, beta: float, ply: int) -> float:
@@ -90,7 +112,7 @@ def quiescence_search(board: chess.Board, alpha: float, beta: float, ply: int) -
     if board.is_check():
         moves = list(board.legal_moves)
     else:
-        moves = [m for m in board.legal_moves if board.is_capture(m)]
+        moves = list(board.generate_legal_captures())
 
     moves.sort(key=lambda m: move_ordering_score(board, m), reverse=True)
 
@@ -115,6 +137,8 @@ def negamax(board: chess.Board, depth: int, alpha: float, beta: float, ply: int 
 
     key = tt_board_key(board)
     alpha_orig = alpha
+    entry = transposition_table.get(key)
+    hash_move = entry.best_move if entry is not None else None
     cached = tt_probe(key, depth, alpha, beta)
     if cached is not None:
         return cached
@@ -123,12 +147,16 @@ def negamax(board: chess.Board, depth: int, alpha: float, beta: float, ply: int 
         return quiescence_search(board, alpha, beta, ply)
 
     best = float("-inf")
-    for move in ordered_legal_moves(board):
+    best_move: chess.Move | None = None
+    for move in ordered_legal_moves(board, hash_move=hash_move):
         board.push(move)
         score = -negamax(board, depth - 1, -beta, -alpha, ply + 1)
         board.pop()
-        best = max(best, score)
-        alpha = max(alpha, best)
+        if score > best:
+            best = score
+            best_move = move
+        if best > alpha:
+            alpha = best
         if alpha >= beta:
             break
 
@@ -140,5 +168,5 @@ def negamax(board: chess.Board, depth: int, alpha: float, beta: float, ply: int 
         flag = FLAG_EXACT
 
     if not _is_mate_band(best):
-        tt_store(key, depth, best, flag)
+        tt_store(key, depth, best, flag, best_move)
     return best
