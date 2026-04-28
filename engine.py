@@ -41,7 +41,6 @@ def choose_move(board: chess.Board, limits: SearchLimits) -> chess.Move:
     max_depth = max(1, limits.depth)
 
     def run_depth(d: int) -> tuple[list[chess.Move], float]:
-        transposition_table.clear()
         bm: list[chess.Move] = []
         bs = float("-inf")
         for move in ordered_legal_moves(board):
